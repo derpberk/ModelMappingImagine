@@ -21,10 +21,10 @@ Default MNIST dataset is used and standard train/test split is performed
 """
 nav_map = np.genfromtxt('Maps/example_map.csv')
 dataset = AlgaeBloomDataset(set='train')
-train_loader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=0)
+train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
 dataset_test = AlgaeBloomDataset(set='test')
-test_loader = DataLoader(dataset_test, batch_size=64, shuffle=True, num_workers=0)
+test_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=True, num_workers=0)
 
 
 """
@@ -53,12 +53,12 @@ for epoch in range(num_epochs):
             imgs = gt_imgs * sensing_masks
 
         # Feeding a batch of images into the network to obtain the output image, mu, and logVar
-        out = net(imgs)
-        loss = net.loss_function(*out, M_N = 0.005)
+        out, input, recons_features, input_features, mu, log_varut = net(imgs)
+        loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss, feature_loss = net.loss_function(mu, log_varut, input, out, gt_imgs, sensing_masks, recons_features, input_features)
 
         # Backpropagation based on the loss
         optimizer.zero_grad()
-        loss['loss'].backward()
+        loss.backward()
         optimizer.step()
 
     print('Epoch {}: Loss {}'.format(epoch, loss))

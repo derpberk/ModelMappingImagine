@@ -7,8 +7,15 @@ import torch.nn.functional as F
 A Convolutional Variational Autoencoder
 """
 class VAE(nn.Module):
-    def __init__(self, input_shape = (1, 64, 64), zDim=256):
+    def __init__(self, input_shape = (1, 64, 64), zDim=256, **kwargs):
         super(VAE, self).__init__()
+
+        # Set the hyperparameters for weighting tyhe loss
+        self.L_ce = kwargs['L_ce']
+        self.L_kl = kwargs['L_kl']
+        self.L_p  = kwargs['L_p']
+        self.L_r  = kwargs['L_r']
+
 
         # Initializing the 2 convolutional layers and 2 full-connected layers for the encoder
 
@@ -78,6 +85,23 @@ class VAE(nn.Module):
         z = self.reparameterize(mu, logVar)
         out = self.decode(z)
         return out, mu, logVar
+
+    def compute_loss(self, mu, logVar, input, out, gts, sensing_masks):
+
+        # Compute the reconstruction loss and KL divergence loss
+        # The loss is the summation of the two losses
+        # The loss is used for backpropagation
+        # The loss is the BCE loss combined with the KL divergence to ensure the distribution is learnt
+
+        kl_divergence = 0.5 * torch.mean(-1 - logVar + mu.pow(2) + logVar.exp())
+        perceptual_loss = torch.mean(torch.abs(out - gts))
+        reconstruction_loss = torch.mean((1.0 - sensing_masks) * torch.abs(out - gts)) + torch.mean(sensing_masks * torch.abs(out - input))
+        cross_entropy = F.binary_cross_entropy(out, input, reduction='mean')
+
+        loss = self.L_ce * cross_entropy + self.L_ce * kl_divergence + self.L_ce * perceptual_loss + self.L_ce * reconstruction_loss
+
+        return loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss
+
 
 if __name__ == '__main__':
     # Test the VAE

@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torchvision.models import vgg19_bn
+from torchvision.models import vgg19_bn, VGG19_BN_Weights
 from torch.nn import functional as F
 from typing import List, Callable, Union, Any, TypeVar, Tuple
 from abc import abstractmethod
@@ -113,7 +113,7 @@ class DFCVAE(BaseVAE):
                             #          kernel_size= 3, padding= 1),
                             nn.Tanh())
 
-        self.feature_network = vgg19_bn(pretrained=True)
+        self.feature_network = vgg19_bn(weights=VGG19_BN_Weights.DEFAULT)
 
         # Freeze the pretrained feature network
         for param in self.feature_network.parameters():
@@ -201,9 +201,8 @@ class DFCVAE(BaseVAE):
 
         return features
 
-    def loss_function(self,
-                      *args,
-                      **kwargs) -> dict:
+    def loss_function(self, mu, log_var, input, out, gt_imgs, sensing_masks, recons_features, input_features):
+
         """
         Computes the VAE loss function.
         KL(N(\mu, \sigma), N(0, 1)) = \log \frac{1}{\sigma} + \frac{\sigma^2 + \mu^2}{2} - \frac{1}{2}
@@ -211,25 +210,23 @@ class DFCVAE(BaseVAE):
         :param kwargs:
         :return:
         """
-        recons = args[0]
-        input = args[1]
-        recons_features = args[2]
-        input_features = args[3]
-        mu = args[4]
-        log_var = args[5]
 
-        kld_weight = kwargs['M_N'] # Account for the minibatch samples from the dataset
-        recons_loss =F.mse_loss(recons, input)
+        reconstruction_loss = torch.mean((1.0 - sensing_masks) * torch.abs(out - gt_imgs)) + torch.mean(sensing_masks * torch.abs(out - input))
+
 
         feature_loss = 0.0
         for (r, i) in zip(recons_features, input_features):
             feature_loss += F.mse_loss(r, i)
 
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
+        kl_divergence = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
 
-        loss = self.beta * (recons_loss + feature_loss) + self.alpha * kld_weight * kld_loss
+        cross_entropy = F.binary_cross_entropy(out, input, reduction='mean')
 
-        return {'loss': loss, 'Reconstruction_Loss':recons_loss, 'KLD':-kld_loss}
+        perceptual_loss = torch.mean(torch.abs(out - gt_imgs))
+
+        loss =  reconstruction_loss + feature_loss + kl_divergence + cross_entropy + perceptual_loss
+
+        return loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss, feature_loss
 
     def sample(self,
                num_samples:int,
