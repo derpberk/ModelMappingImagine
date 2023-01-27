@@ -71,6 +71,9 @@ for epoch in range(num_epochs):
     print('Epoch {}: Loss {} | cross_entropy: {} | kl_div : {} | perceptual_loss: {} | reconstruction loss: {}'.format(epoch, loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss))
 
 
+
+VAE.save(net, 'Models/VAE_{}.pt'.format(epoch))
+
 # Test the network on a single image and plot the output image next to the input image
 
 import matplotlib.pyplot as plt
@@ -78,6 +81,7 @@ import matplotlib.pyplot as plt
 
 
 for i in range(10):
+
     with torch.no_grad():
 
 
@@ -105,5 +109,5 @@ for i in range(10):
         ax.imshow(imgs[0, 0, :, :].cpu().numpy() * sensing_masks[0, 0, :, :].cpu().numpy() + (out[0, 0, :, :].cpu().numpy() * (1.0 - sensing_masks[0, 0, :, :].cpu().numpy())),  cmap=algae_colormap, vmin=0.0, vmax=1.0)
         ax.set_title('Output 1 Image')
 
-        plt.show()
+        plt.savefig('Results/VAE_Results/VAE_Results_{}.png'.format(i))
 
