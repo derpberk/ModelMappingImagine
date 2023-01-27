@@ -72,7 +72,7 @@ for epoch in range(num_epochs):
 
 
 
-VAE.save(net, 'Models/VAE_{}.pt'.format(epoch))
+torch.save(net, 'Models/VAE_{}.pt'.format(epoch))
 
 # Test the network on a single image and plot the output image next to the input image
 
