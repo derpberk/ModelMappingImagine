@@ -8,6 +8,7 @@ from GroundTruthsModels.AlgaeBloomGroundTruth import algae_colormap
 from tensorboard import summary
 from torch.utils.tensorboard import SummaryWriter
 
+
 """
 Initialize Hyperparameters
 """
