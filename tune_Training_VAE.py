@@ -12,6 +12,7 @@ import torch
 from DatasetConstruction.DataLoader import AlgaeBloomDataset
 from Model.VAE import VAE
 import numpy as np
+from tqdm import trange
 
 
 
@@ -39,8 +40,11 @@ def objective(trial: optuna.trial.Trial) -> float:
 	dataset_test = AlgaeBloomDataset(set='test')
 	test_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=True, num_workers=0)
 
+	# Construct dict of hyperparameters #
+	L_vae = {'L_ce': L_ce, 'L_kl': L_kl, 'L_p': L_p, 'L_r': L_r}
+
 	""" Instantiate the model """
-	net = VAE(input_shape = (1, *dataset[0][0][0].shape),
+	net = VAE(input_shape = (1, *dataset[0][0][0].shape, L_vae),
 			L_ce = 3.0,
 			L_kl = 3.0,
 			L_p = 1.0,
@@ -49,7 +53,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 	optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 
 	""" Loop over the epochs """
-	for epoch in range(1, 100 + 1):
+	for epoch in trange(1, 100 + 1):
 
 		net.train()
 		train_loss = 0
