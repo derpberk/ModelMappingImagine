@@ -43,11 +43,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 	L_vae = {'L_ce': L_ce, 'L_kl': L_kl, 'L_p': L_p, 'L_r': L_r}
 
 	""" Instantiate the model """
-	net = VAE(input_shape = (1, *dataset[0][0][0].shape, L_vae),
-			L_ce = 3.0,
-			L_kl = 3.0,
-			L_p = 1.0,
-			L_r = 8.0).to('cuda:0')
+	net = VAE(input_shape = (1, *dataset[0][0][0].shape), L_ce = L_ce, L_kl=L_kl, L_p=L_p, L_r=L_r).to('cuda:0')
 
 	optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 

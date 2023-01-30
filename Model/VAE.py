@@ -103,6 +103,47 @@ class VAE(nn.Module):
 
         return loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss
 
+class lightning_VAE(pl.LightningModule):
+
+    def __init__(self, input_shape = (1, 64, 64), zDim=256, **kwargs):
+        super(lightning_VAE, self).__init__()
+
+        self.model = VAE(input_shape = input_shape, zDim=zDim, **kwargs)
+
+        self.L_ce = kwargs['L_ce']
+        self.L_kl = kwargs['L_kl']
+        self.L_p  = kwargs['L_p']
+        self.L_r  = kwargs['L_r']
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-4)
+
+    def training_step(self, *args, **kwargs):
+        """ Lightning calls this inside the training loop """
+
+        # forward pass
+        out, mu, logVar = self.model.forward(args[0])
+
+        # compute loss
+        loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss = self.model.compute_loss(mu, logVar, args[0], out, args[1], args[2])
+
+        # log loss
+        self.log('train_loss', loss)
+        self.log('train_cross_entropy', cross_entropy)
+        self.log('train_kl_divergence', kl_divergence)
+        self.log('train_perceptual_loss', perceptual_loss)
+        self.log('train_reconstruction_loss', reconstruction_loss)
+
+        return loss
+
+    def train(self):
+
+        # train the model
+        trainer = pl.Trainer(max_epochs=100, gpus=1)
+        trainer.fit(self, self.train_dataloader(), self.val_dataloader())
+        
+
+
 
 if __name__ == '__main__':
     # Test the VAE
