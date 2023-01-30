@@ -48,7 +48,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 	optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 
 	""" Loop over the epochs """
-	for epoch in trange(1, 0 + 1):
+	for epoch in trange(1, 100 + 1):
 
 		net.train()
 		train_loss = 0
