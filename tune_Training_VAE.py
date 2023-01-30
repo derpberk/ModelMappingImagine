@@ -24,7 +24,6 @@ def objective(trial: optuna.trial.Trial) -> float:
 
 	""" Sample hyperparameters from the search space. """
 	# Suggest values for the batch size
-	batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
 	# Suggest floats for L_ce, L_kl, L_p, L_r
 	L_ce = trial.suggest_float("L_ce", 0.1, 10.0)
 	L_kl = trial.suggest_float("L_kl", 0.1, 10.0)
@@ -35,10 +34,10 @@ def objective(trial: optuna.trial.Trial) -> float:
 	""" Load the dataset """
 	nav_map = np.genfromtxt('Maps/example_map.csv')
 	dataset = AlgaeBloomDataset(set='train')
-	train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+	train_loader = DataLoader(dataset, batch_size=128, shuffle=True, num_workers=0)
 
 	dataset_test = AlgaeBloomDataset(set='test')
-	test_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=True, num_workers=0)
+	test_loader = DataLoader(dataset_test, batch_size=128, shuffle=True, num_workers=0)
 
 	# Construct dict of hyperparameters #
 	L_vae = {'L_ce': L_ce, 'L_kl': L_kl, 'L_p': L_p, 'L_r': L_r}
