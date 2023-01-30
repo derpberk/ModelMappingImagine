@@ -1,4 +1,6 @@
 *.pyc
 *.npy
+*.pt
+*.png
 
 /DatasetConstruction/Data/
