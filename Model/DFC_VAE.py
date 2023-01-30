@@ -220,7 +220,7 @@ class DFCVAE(BaseVAE):
 
         kl_divergence = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
 
-        cross_entropy = F.binary_cross_entropy(out, input, reduction='mean')
+        cross_entropy = F.cross_entropy(out, input).mean()
 
         perceptual_loss = torch.mean(torch.abs(out - gt_imgs))
 
