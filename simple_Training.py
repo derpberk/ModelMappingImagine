@@ -35,10 +35,10 @@ test_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=True, num_
 Initialize the network and the Adam optimizer
 """
 net = VAE(input_shape = (1, *dataset[0][0][0].shape),
-            L_ce = 3.0,
-            L_kl = 3.0,
-            L_p = 1.0,
-            L_r = 8.0).to(device)
+            L_ce = 4.95,
+            L_kl = 4.79,
+            L_p = 6.53,
+            L_r = 0.26).to(device)
 
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
@@ -81,6 +81,7 @@ for epoch in range(num_epochs):
 
         with torch.no_grad():
             gt_imgs = imgs[:, 0, :, :].unsqueeze(1).to(device)
+            gt_imgs = gt_imgs/gt_imgs.max(axis=1)
             sensing_masks = imgs[:, 1, :, :].unsqueeze(1).to(device)
 
             # The input images are the first channel multiplied by the sensing mask

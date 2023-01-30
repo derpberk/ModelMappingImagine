@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 """
 A Convolutional Variational Autoencoder
 """
-class VAE(nn.Module):
+class VAE(pl.LightningModule):
     def __init__(self, input_shape = (1, 64, 64), zDim=256, **kwargs):
         super(VAE, self).__init__()
 
@@ -22,11 +22,11 @@ class VAE(nn.Module):
 
         self.encoder = nn.Sequential(
             nn.Conv2d(input_shape[0], 16, 8),
-            nn.GELU(),
+            nn.ReLU(),
             nn.Conv2d(16, 32, 5),
-            nn.GELU(),
+            nn.ReLU(),
             nn.Conv2d(32, 64, 3),
-            nn.GELU()
+            nn.ReLU()
         )
 
 
@@ -43,9 +43,9 @@ class VAE(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(64, 32, 3),
-            nn.GELU(),
+            nn.ReLU(),
             nn.ConvTranspose2d(32, 16, 5),
-            nn.GELU(),
+            nn.ReLU(),
             nn.ConvTranspose2d(16, 1, 8),
             nn.Sigmoid()
         )
