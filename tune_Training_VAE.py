@@ -48,7 +48,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 	optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 
 	""" Loop over the epochs """
-	for epoch in trange(1, 100 + 1):
+	for epoch in trange(1, 0 + 1):
 
 		net.train()
 		train_loss = 0
@@ -101,7 +101,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 			loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss  = net.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks)
 			
 			# Accumulate the error
-			error += torch.mse_loss(out, gt_imgs).item()
+			error += F.mse_loss(out, gt_imgs).item()
 
 	# Return the error
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
 	pruner: optuna.pruners.BasePruner = optuna.pruners.MedianPruner()
 
-	study = optuna.create_study(direction="maximize", pruner=pruner)
+	study = optuna.create_study(direction="minimize", pruner=pruner)
 	study.optimize(objective, n_trials=50, timeout=600, show_progress_bar=True)
 
 	print("Number of finished trials: {}".format(len(study.trials)))
