@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
     import matplotlib.pyplot as plt
 
-    gt = algae_bloom(np.genfromtxt('../Maps/example_map.csv', delimiter=','), dt=0.2)
+    gt = algae_bloom(np.genfromtxt('Maps/example_map.csv'), dt=0.2)
 
     m = gt.reset()
     gt.render()

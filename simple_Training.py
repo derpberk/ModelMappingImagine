@@ -35,10 +35,11 @@ test_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=True, num_
 Initialize the network and the Adam optimizer
 """
 net = VAE(input_shape = (1, *dataset[0][0][0].shape),
-            L_ce = 3.0,
+            L_dfc = 1.0,
             L_kl = 3.0,
             L_p = 1.0,
-            L_r = 8.0).to(device)
+            L_r = 8.0,
+            deep_feature_coherent=True).to(device)
 
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
@@ -59,15 +60,15 @@ Training the network for a given number of epochs
 The loss after every epoch is printed
 """
 
-metrics = {'train': {'loss': [], 'cross_entropy': [], 'kl_divergence': [], 'perceptual_loss': [], 'reconstruction_loss': [], 'mean_abs_error': [], 'mean_abs_error_masked': []},
-              'test': {'loss': [], 'cross_entropy': [], 'kl_divergence': [], 'perceptual_loss': [], 'reconstruction_loss': [], 'mean_abs_error': [], 'mean_abs_error_masked': []},}
+metrics = {'train': {'loss': [], 'features_loss': [], 'kl_divergence': [], 'perceptual_loss': [], 'reconstruction_loss': [], 'mean_abs_error': [], 'mean_abs_error_masked': []},
+              'test': {'loss': [], 'features_loss': [], 'kl_divergence': [], 'perceptual_loss': [], 'reconstruction_loss': [], 'mean_abs_error': [], 'mean_abs_error_masked': []},}
         
 
 for epoch in range(num_epochs):
 
     # Initialize the loss
     train_loss = 0.0
-    train_cross_entropy = 0.0
+    train_feature_loss = 0.0
     train_kl_divergence = 0.0
     train_perceptual_loss = 0.0
     train_reconstruction_loss = 0.0
@@ -87,10 +88,10 @@ for epoch in range(num_epochs):
             imgs = gt_imgs * sensing_masks
 
         # Feeding a batch of images into the network to obtain the output image, mu, and logVar
-        out, mu, logVar = net(imgs)
+        out, mu, logVar, fea_in, fea_out = net(imgs)
 
         # Compute the loss
-        loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss  = net.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks)
+        loss, kl_divergence, perceptual_loss, reconstruction_loss, features_loss  = net.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks, fea_in, fea_out)
 
         # Backpropagation based on the loss
         optimizer.zero_grad()
@@ -99,7 +100,7 @@ for epoch in range(num_epochs):
 
          # Append the loss to the metrics dictionary
         train_loss += loss.item()
-        train_cross_entropy += cross_entropy.item()
+        train_feature_loss += features_loss.item()
         train_kl_divergence += kl_divergence.item()
         train_perceptual_loss += perceptual_loss.item()
         train_reconstruction_loss += reconstruction_loss.item()
@@ -108,14 +109,14 @@ for epoch in range(num_epochs):
 
     # Append the loss to the metrics dictionary
     metrics['train']['loss'].append(train_loss / len(train_loader))
-    metrics['train']['cross_entropy'].append(train_cross_entropy / len(train_loader))
+    metrics['train']['features_loss'].append(train_feature_loss / len(train_loader))
     metrics['train']['kl_divergence'].append(train_kl_divergence / len(train_loader))
     metrics['train']['perceptual_loss'].append(train_perceptual_loss / len(train_loader))
     metrics['train']['reconstruction_loss'].append(train_reconstruction_loss / len(train_loader))
     metrics['train']['mean_abs_error'].append(train_mean_abs_error / len(train_loader))
     metrics['train']['mean_abs_error_masked'].append(train_mean_abs_error_masked / len(train_loader))
 
-    print('Epoch {}: Loss {} | cross_entropy: {} | kl_div : {} | perceptual_loss: {} | reconstruction loss: {}'.format(epoch, loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss))
+    print('Epoch {}: Loss {} | features_loss: {} | kl_div : {} | perceptual_loss: {} | reconstruction loss: {}'.format(epoch, loss, features_loss, kl_divergence, perceptual_loss, reconstruction_loss))
 
 
     # Test the network on the test set
@@ -123,7 +124,7 @@ for epoch in range(num_epochs):
 
         # Initialize the loss
         test_loss = 0.0
-        test_cross_entropy = 0.0
+        test_feature_loss = 0.0
         test_kl_divergence = 0.0
         test_perceptual_loss = 0.0
         test_reconstruction_loss = 0.0
@@ -142,15 +143,15 @@ for epoch in range(num_epochs):
                 imgs = gt_imgs * sensing_masks
 
             # Feeding a batch of images into the network to obtain the output image, mu, and logVar
-            out, mu, logVar = net(imgs)
+            out, mu, logVar, fea_in, fea_out = net(imgs)
 
             # The loss is the BCE loss combined with the KL divergence to ensure the distribution is learnt
-            loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss  = net.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks)
+            loss, kl_divergence, perceptual_loss, reconstruction_loss, feature_loss  = net.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks, fea_in, fea_out)
 
 
             # Append the loss to the metrics dictionary
             test_loss += loss.item()
-            test_cross_entropy += cross_entropy.item()
+            test_feature_loss += feature_loss.item()
             test_kl_divergence += kl_divergence.item()
             test_perceptual_loss += perceptual_loss.item()
             test_reconstruction_loss += reconstruction_loss.item()
@@ -159,7 +160,7 @@ for epoch in range(num_epochs):
 
         # Append the loss to the metrics dictionary
         metrics['test']['loss'].append(test_loss / len(test_loader))
-        metrics['test']['cross_entropy'].append(test_cross_entropy / len(test_loader))
+        metrics['test']['features_loss'].append(test_feature_loss / len(test_loader))
         metrics['test']['kl_divergence'].append(test_kl_divergence / len(test_loader))
         metrics['test']['perceptual_loss'].append(test_perceptual_loss / len(test_loader))
         metrics['test']['reconstruction_loss'].append(test_reconstruction_loss / len(test_loader))
@@ -197,7 +198,7 @@ for i in range(10):
         imgs = gt_imgs * sensing_masks
 
         # Feeding a batch of images into the network to obtain the output image, mu, and logVar
-        out, mu, logVar = net(imgs)
+        out, mu, logVar, _, _ = net(imgs)
 
         # Represent the input image and the output image in the same figure
         fig = plt.figure()
