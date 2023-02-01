@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # execute in parallel create_map function N times #
     with Pool(4) as p:
         for data in tqdm(p.imap_unordered(create_map, seeds), total=N):
-            results.append(data)
+            results.append(data/data.max())
 
     #Convert data to np array and save it as a npy file in Data
     data_stacked = np.array(results)

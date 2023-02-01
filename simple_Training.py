@@ -82,6 +82,7 @@ for epoch in range(num_epochs):
 
         with torch.no_grad():
             gt_imgs = imgs[:, 0, :, :].unsqueeze(1).to(device)
+            gt_imgs = gt_imgs/gt_imgs.max(axis=1)
             sensing_masks = imgs[:, 1, :, :].unsqueeze(1).to(device)
 
             # The input images are the first channel multiplied by the sensing mask
