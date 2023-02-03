@@ -21,7 +21,7 @@ TRIALS = 25
 
 def objective(trial: optuna.trial.Trial) -> float:
 	
-	device = 'cuda:0'
+	device = 'cuda:1'
 
 	""" Sample hyperparameters from the search space. """
 	# Suggest values for the batch size
@@ -30,6 +30,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 	L_p = trial.suggest_float("L_p", 0.1, 10.0)
 	L_r = trial.suggest_float("L_r", 0.1, 10.0)
 	L_dfc = trial.suggest_float("L_dfc", 0.1, 10.0)
+	L_ce = trial.suggest_float("L_ce", 0.1, 10.0)
 
 
 	""" Load the dataset """
@@ -41,7 +42,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 	test_loader = DataLoader(dataset_test, batch_size=128, shuffle=True, num_workers=0)
 
 	""" Instantiate the model """
-	net = VAE(input_shape = (1, *dataset[0][0][0].shape), deep_feature_coherent=True, L_dfc = L_dfc, L_kl=L_kl, L_p=L_p, L_r=L_r).to('cuda:0')
+	net = VAE(input_shape = (1, *dataset[0][0][0].shape), deep_feature_coherent=True, L_dfc = L_dfc, L_kl=L_kl, L_p=L_p, L_r=L_r, L_ce = L_ce, device = device).to(device)
 
 	""" Set the optimizer """
 	net.set_optimizer()
@@ -53,9 +54,10 @@ def objective(trial: optuna.trial.Trial) -> float:
 		# TIME TO TRAIN
 		net.train()
 		train_loss = 0
+		
 		for _, data in enumerate(train_loader):
 			imgs, _ = data
-			loss = net.train_batch(imgs)
+			loss, _, _, _, _ = net.train_batch(imgs)
 			train_loss += loss
 			
 		# TIME TO TEST
@@ -63,7 +65,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 		error = 0
 		for _, data in enumerate(test_loader, 0):
 				imgs, _ = data
-				mse = net.evaluate_batch(imgs, N = 10)
+				mse = net.evaluate_batch(imgs, N = 0)
 				error += mse
 
 		# Report the error

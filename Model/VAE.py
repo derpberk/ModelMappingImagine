@@ -24,6 +24,8 @@ class VAE(nn.Module):
 		self.L_kl = kwargs['L_kl']
 		self.L_p  = kwargs['L_p']
 		self.L_r  = kwargs['L_r']
+		self.L_ce = kwargs['L_ce']
+		self.device = kwargs['device']
 
 
 		# Initializing the 2 convolutional layers and 2 full-connected layers for the encoder
@@ -60,7 +62,7 @@ class VAE(nn.Module):
 
 		# Initialize the vgg19_bn model for deep feature coherent loss
 		if self.dfc:
-			self.feature_extractor = vgg19_bn(weights=VGG19_BN_Weights.DEFAULT)
+			self.feature_extractor = vgg19_bn(weights=VGG19_BN_Weights.DEFAULT).to(self.device)
 
 	def set_optimizer(self):
 		# Set optimizer 
@@ -163,8 +165,9 @@ class VAE(nn.Module):
 		kl_divergence = 0.5 * torch.mean(-1 - logVar + mu.pow(2) + logVar.exp())
 		perceptual_loss = torch.mean(torch.abs(out - gts))
 		reconstruction_loss = torch.mean((1.0 - sensing_masks) * torch.abs(out - gts)) + torch.mean(sensing_masks * torch.abs(out - input))
+		cross_entropy = F.binary_cross_entropy(out, gts)
 
-		loss = self.L_kl * kl_divergence + self.L_p * perceptual_loss + self.L_r * reconstruction_loss + self.L_dfc * features_loss
+		loss = self.L_kl * kl_divergence + self.L_p * perceptual_loss + self.L_r * reconstruction_loss + self.L_dfc * features_loss + self.L_ce * cross_entropy
 
 		return loss, kl_divergence, perceptual_loss, reconstruction_loss, features_loss
 
@@ -177,7 +180,7 @@ class VAE(nn.Module):
 
 		# Encode the input image
 
-		input_image = torch.as_tensor(input_image, dtype=torch.float32).to('cuda:0')
+		input_image = torch.as_tensor(input_image, dtype=torch.float32).to(self.device)
 		mu, logVar = self.encode(input_image)
 
 		if N == 0:
@@ -185,6 +188,7 @@ class VAE(nn.Module):
 			z = self.reparameterize(mu, torch.zeros_like(logVar))
 			# Decode the latent representation
 			out = self.decode(z).squeeze(0)
+			
 			return out, None
 		else:
 			# Reparameterize the latent representation N times: call self.reparameterize N times and stack the results in the first dimension #
@@ -203,8 +207,8 @@ class VAE(nn.Module):
 
 		with torch.no_grad():
 
-				gt_imgs = batch[:, 0, :, :].unsqueeze(1).to('cuda:0')
-				sensing_masks = batch[:, 1, :, :].unsqueeze(1).to('cuda:0')
+				gt_imgs = batch[:, 0, :, :].unsqueeze(1).to(self.device)
+				sensing_masks = batch[:, 1, :, :].unsqueeze(1).to(self.device)
 
 				# The input images are the first channel multiplied by the sensing mask
 				imgs = gt_imgs * sensing_masks
@@ -220,8 +224,8 @@ class VAE(nn.Module):
 
 		with torch.no_grad():
 
-				gt_imgs = batch[:, 0, :, :].unsqueeze(1).to('cuda:0')
-				sensing_masks = batch[:, 1, :, :].unsqueeze(1).to('cuda:0')
+				gt_imgs = batch[:, 0, :, :].unsqueeze(1).to(self.device)
+				sensing_masks = batch[:, 1, :, :].unsqueeze(1).to(self.device)
 
 				# The input images are the first channel multiplied by the sensing mask
 				imgs = gt_imgs * sensing_masks
@@ -230,14 +234,14 @@ class VAE(nn.Module):
 		out, mu, logVar, fea_in, fea_out = self.forward(imgs)
 
 		# Compute the loss
-		loss, cross_entropy, kl_divergence, perceptual_loss, reconstruction_loss  = self.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks, fea_in, fea_out)
+		loss, kl_divergence, perceptual_loss, reconstruction_loss, features_loss  = self.compute_loss(mu, logVar, imgs, out, gt_imgs, sensing_masks, fea_in, fea_out)
 
 		# Backpropagation based on the loss
 		self.optimizer.zero_grad()
 		loss.backward()
 		self.optimizer.step()
 
-		return loss.item()
+		return loss.item(), kl_divergence.item(), perceptual_loss.item(), reconstruction_loss.item(), features_loss.item()
 
 
 
